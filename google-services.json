@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "397339573995",
+    "firebase_url": "https://testdesktop-bf282-default-rtdb.firebaseio.com",
+    "project_id": "testdesktop-bf282",
+    "storage_bucket": "testdesktop-bf282.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397339573995:android:758650c96cd8751c4ec8ae",
+        "android_client_info": {
+          "package_name": "com.example.desktop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSrBrSJf8a1fyKWxNfDk6VdnTq1xLVIAI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
