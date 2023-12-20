@@ -9,6 +9,16 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/log" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$USER_HOME$/Downloads/LoggerSlf4j" />
+        <option name="gradleJvm" value="corretto-20" />
+        <option name="modules">
+          <set>
+            <option value="$USER_HOME$/Downloads/LoggerSlf4j" />
           </set>
         </option>
       </GradleProjectSettings>
