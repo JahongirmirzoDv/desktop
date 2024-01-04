@@ -1,40 +1,51 @@
 //import android.app.Application
+@file:OptIn(DelicateCoroutinesApi::class)
+
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import io.appwrite.Client
-import io.appwrite.ID
-import io.appwrite.models.InputFile
-import io.appwrite.services.Storage
+import di.initKoin
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.SupabaseClientBuilder
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.gotrue.Auth
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.Google
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.UploadData
+import io.github.jan.supabase.storage.resumable.ResumableUpload
+import io.github.jan.supabase.storage.resumable.SettingsResumableCache
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 //import dev.gitlive.firebase.FirebaseApp
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import kotlin.coroutines.CoroutineContext
 
-@Composable
-@Preview
-fun App() {
-    var text by remember { mutableStateOf("Hello, World!") }
-
-    LoginOptions()
-}
+lateinit var supabase: SupabaseClient
+ var  progress =  mutableStateOf(false)
 
 @Composable
 @Preview
 private fun LoginOptions() {
-     val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     MaterialTheme {
-
 
         Column(
             modifier = Modifier
@@ -49,11 +60,7 @@ private fun LoginOptions() {
             Button(
                 onClick = {
                     scope.launch {
-//                        viewModel.add()
-//                        viewModel.loginWithCorrectPassword()
-                        scope.launch {
-                            FirebaseService.saveData("salom")
-                        }
+
                     }
                 },
             ) {
@@ -63,46 +70,85 @@ private fun LoginOptions() {
 
             Button(
                 onClick = {
-//                    scope.launch { viewModel.loginWithIncorrectPassword() }
+                    progress.value = true
+                    scope.launch {
+                        val f = File("/Users/jahongirmirzotolqinov/Downloads/", "qra.png").readBytes()
+                        uploadData(f)
+                    }
                 },
                 colors = ButtonDefaults.buttonColors()
             ) {
                 Text(text = "Login with wrong password")
             }
+            if (progress.value){
+                CircularProgressIndicator(
+                    modifier = Modifier.size(100.dp),
+                    color = Color.Green,
+                    strokeWidth = 10.dp)
 
-
+            }
         }
     }
 }
 
+@Preview
+@Composable
+fun App(){
+    MaterialTheme {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Fayllarni tanlang!")
+        }
+    }
+}
+
+suspend fun uploadData(bytes: ByteArray) {
+    val upload: ResumableUpload = supabase.storage.from("test")
+        .resumable.createOrContinueUpload(bytes, "", "21/n1.png")
+
+    upload.stateFlow
+        .onEach {
+            if (it.isDone) progress.value = false
+        }
+        .launchIn(CoroutineScope(GlobalScope.coroutineContext))
+    upload.startOrResumeUploading()
+}
+
+@Composable
+private fun CustomCircularProgressBar(){
+    CircularProgressIndicator(
+        modifier = Modifier.size(100.dp),
+        color = Color.Green,
+        strokeWidth = 10.dp)
+
+}
+
 fun main() = application {
-
-    val keyFilePath = "testdesktop-bf282-firebase-adminsdk-qo7r8-315cb58a2b.json"
-    System.setProperty("GOOGLE_APPLICATION_CREDENTIALS", keyFilePath)
-
+    mainData()
+//    initKoin()
     Window(onCloseRequest = ::exitApplication, title = "YourNews") {
 
-        LoginOptions()
+//        LoginOptions()
+        App()
 
-
-
-
-        LoggerFactory.getLogger("Main").info("GOOGLE_APPLICATION_CREDENTIALS: ${System.getenv("GOOGLE_APPLICATION_CREDENTIALS")}")
-        ("GOOGLE_APPLICATION_CREDENTIALS: ${System.getenv("GOOGLE_APPLICATION_CREDENTIALS")}")
     }
 
 }
 
-suspend fun mainData(applicationContext: io.grpc.Context) {
-    val client = Client(applicationContext.toString())
-        .setEndpoint("https://cloud.appwrite.io/v1") // Your API Endpoint
-        .setProject("65809c047af30991f306") // Your project ID
+fun mainData() {
+    supabase = createSupabaseClient(
+        supabaseUrl = "https://dqoixoqoxdpxtowuxnke.supabase.co",
+        supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxb2l4b3FveGRweHRvd3V4bmtlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcwMjk4Mjg1NiwiZXhwIjoyMDE4NTU4ODU2fQ.n2tuO5s4PNTQkfAbF_VtrXxZBLDUtZtgUEqfMTcJh6w"
+    ) {
+        install(Auth)
+        install(Storage) {
+            resumable {
+                cache = SettingsResumableCache()
+            }
+        }
+        install(Postgrest)
+        //install other modules
+    }
 
-    val storage = Storage(client)
-
-    val file = storage.createFile(
-        bucketId = "65809daaf22ac5a80281",
-        fileId = ID.unique(),
-        file = InputFile.fromFile(File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/google-services.json"))
-    )
 }

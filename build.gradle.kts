@@ -24,15 +24,18 @@ dependencies {
     implementation("io.ktor:ktor-client-cio-jvm:2.3.2")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.2")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.2")
+//    implementation("io.ktor:ktor-client-[JAVA]:2.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.0")
     implementation("com.google.code.gson:gson:2.8.9")
-    implementation("io.appwrite:sdk-for-kotlin:4.1.0")
 
 
     implementation(platform("io.github.jan-tennert.supabase:bom:2.0.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
-    implementation("io.ktor:ktor-client-[engine]")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+
+    implementation("io.insert-koin:koin-core:3.4.1")
+
 
 
 
