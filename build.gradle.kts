@@ -28,6 +28,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.0")
     implementation("com.google.code.gson:gson:2.8.9")
 
+    implementation("io.coil-kt:coil:2.5.0")
+
+
 
     implementation(platform("io.github.jan-tennert.supabase:bom:2.0.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")

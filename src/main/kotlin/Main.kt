@@ -4,11 +4,12 @@
 //import dev.gitlive.firebase.FirebaseApp
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.onClick
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -34,9 +35,12 @@ import kotlinx.coroutines.flow.onEach
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
-import java.time.LocalDate
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
+import java.util.*
+import java.util.logging.Handler
 import javax.swing.filechooser.FileSystemView
+import kotlin.collections.ArrayList
 
 
 lateinit var supabase: SupabaseClient
@@ -67,21 +71,12 @@ private fun LoginOptions() {
 
             Button(
                 onClick = {
-                    progress.value = true
-                    scope.launch {
-                        val f = File("/Users/jahongirmirzotolqinov/Downloads/", "qra.png").readBytes()
-                        uploadData(f)
-                    }
+
                 }, colors = ButtonDefaults.buttonColors()
             ) {
                 Text(text = "Login with wrong password")
             }
-            if (progress.value) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
-                )
 
-            }
         }
     }
 }
@@ -94,12 +89,15 @@ fun App(window: ComposeWindow) {
     var text by remember { mutableStateOf("Hello, World!") }
     var isFileChooserOpen by remember { mutableStateOf(false) }
     var files by remember { mutableStateOf<List<File>>(emptyList()) }
+    var serverPath by remember { mutableStateOf("") }
 
     val fileSystemView = FileSystemView.getFileSystemView()
-
-
     // Get the Documents folder
     val documentsDir = fileSystemView.defaultDirectory
+
+    var path by remember { mutableStateOf("") }
+
+
 
     val array = ArrayList<File>()
 
@@ -112,11 +110,11 @@ fun App(window: ComposeWindow) {
         }
         isFileChooserOpen = false
 
-        if (files.isNotEmpty()){
+        if (files.isNotEmpty()) {
             scope.launch {
-                val path = "${documentsDir.path}/${LocalDateTime.now()}_merge.zip"
-                Thread.sleep(5000)
-                mergeZip(files, path)
+                delay(5000)
+                path = mergeZip(files, "${documentsDir.path}/${LocalDateTime.now()}_merge.zip")
+
             }
         }
     }
@@ -130,18 +128,43 @@ fun App(window: ComposeWindow) {
                 Text("Fayllarni tanlang!", color = Color.Black, style = TextStyle(fontSize = 30.sp))
             }
             FlowColumn(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f).background(Color.LightGray)
-                , horizontalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f).background(Color.LightGray),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 repeat(files.size) { k ->
                     Text("${files[k].name} ")
                 }
 
             }
+
             Button(onClick = {
                 isFileChooserOpen = true
             }) {
                 Text("Tanlash")
+            }
+            Button(onClick = {
+                progress.value = true
+                scope.launch {
+                    println("path:$path")
+                    val f = File(path).readBytes()
+                    serverPath = uploadData(f, path)
+                }
+            }) {
+                Text("Yuklash")
+            }
+            Button(onClick = {
+                scope.launch {
+                    NewsApiClient.createQR("https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",200,"aa")
+                }
+            }){
+                Text("qr kod yaratish")
+            }
+            Image(pain)
+            if (progress.value) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
+                )
+
             }
         }
 
@@ -186,13 +209,19 @@ fun openFileDialog(
     }.files.toSet()
 }
 
-suspend fun uploadData(bytes: ByteArray) {
-    val upload: ResumableUpload = supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", "21/n1.png")
+suspend fun uploadData(bytes: ByteArray, path: String): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd")
+    val date = Date()
+    val current = formatter.format(date)
+    val date_time = LocalDateTime.now()
+    val file_path = "$current/files/${date_time}_merge.zip"
+    val upload: ResumableUpload = supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", file_path)
 
     upload.stateFlow.onEach {
         if (it.isDone) progress.value = false
     }.launchIn(CoroutineScope(GlobalScope.coroutineContext))
     upload.startOrResumeUploading()
+    return file_path
 }
 
 @Composable
