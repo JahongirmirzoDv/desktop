@@ -35,6 +35,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:storage-kt")
 
     implementation("io.insert-koin:koin-core:3.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")
 
 
 
