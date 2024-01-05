@@ -3,9 +3,7 @@
 
 //import dev.gitlive.firebase.FirebaseApp
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -44,7 +42,6 @@ import javax.swing.filechooser.FileSystemView
 import kotlin.collections.ArrayList
 
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -73,9 +70,11 @@ import java.net.URL
 
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import io.ktor.http.*
 import kotlinx.coroutines.flow.flow
@@ -181,15 +180,24 @@ fun App(window: ComposeWindow) {
             ) {
                 Text("Fayllarni tanlang!", color = Color.Black, style = TextStyle(fontSize = 30.sp))
             }
+
             FlowColumn(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f).background(Color.LightGray),
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.4f).background(Color.LightGray).horizontalScroll(
+                    rememberScrollState()
+                ),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+
                 repeat(files.size) { k ->
-                    Text("${files[k].name} ")
+                    Row (
+                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).padding(2.dp).background(Color.Blue.copy(alpha = 0.4f))
+                    ){
+                        Text("${files[k].name} ", modifier = Modifier.padding(8.dp), color = Color.White)
+                    }
                 }
 
             }
+
 
             Button(onClick = {
                 isFileChooserOpen = true

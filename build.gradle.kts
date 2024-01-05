@@ -42,7 +42,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")
 
     implementation("org.jetbrains.compose.desktop:desktop:1.2.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+//    implementation ("androidx.compose.foundation:foundation:1.6.0-alpha08")
 
 
 
