@@ -15,6 +15,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,16 +34,66 @@ import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import java.awt.FileDialog
-import java.awt.Frame
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.*
 import java.util.logging.Handler
+import androidx.compose.ui.platform.LocalDensity
 import javax.swing.filechooser.FileSystemView
 import kotlin.collections.ArrayList
 
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.res.loadSvgPainter
+import androidx.compose.ui.res.loadXmlImageVector
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.singleWindowApplication
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.xml.sax.InputSource
+import java.awt.*
+import java.awt.print.*
+import java.io.IOException
+import java.net.URL
+
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
+import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
+import io.ktor.http.*
+import kotlinx.coroutines.flow.flow
+import java.awt.FileDialog
+import java.awt.geom.Dimension2D
+import java.awt.print.*
+import javax.print.*
+
+
+import javax.print.attribute.HashPrintRequestAttributeSet
+import javax.print.attribute.standard.MediaSizeName
+import javax.swing.JFrame
+
+
+import java.awt.Image
+import java.awt.print.PrinterJob
+import javax.imageio.ImageIO
+import kotlin.io.path.fileVisitor
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
@@ -91,12 +143,14 @@ fun App(window: ComposeWindow) {
     var files by remember { mutableStateOf<List<File>>(emptyList()) }
     var serverPath by remember { mutableStateOf("") }
 
+    val density = LocalDensity.current
+
     val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
     val documentsDir = fileSystemView.defaultDirectory
 
     var path by remember { mutableStateOf("") }
-
+    var img_path by remember { mutableStateOf(HttpStatusCode(404,"not found")) }
 
 
     val array = ArrayList<File>()
@@ -154,12 +208,31 @@ fun App(window: ComposeWindow) {
             }
             Button(onClick = {
                 scope.launch {
-                    NewsApiClient.createQR("https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",200,"aa")
+                    println("ss $serverPath")
+
+                    if (serverPath.isNotEmpty()){
+                        img_path = NewsApiClient.createQR(
+                            "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
+                            200,
+                            "aa"
+                        )
+                    }
                 }
-            }){
+            }) {
                 Text("qr kod yaratish")
             }
-            Image(pain)
+
+            if(img_path.isSuccess()){
+                showQr(File("${documentsDir.path}/aa.png"))
+            }
+
+            Button(onClick = {
+//                printImage("${documentsDir.path}/aa.png")
+                printQR(File("${documentsDir.path}/aa.png"))
+            }) {
+                Text("print")
+            }
+
             if (progress.value) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
@@ -168,7 +241,19 @@ fun App(window: ComposeWindow) {
             }
         }
 
+
     }
+}
+
+@Composable
+fun showQr(file: File) {
+    AsyncImage(
+        load = { loadImageBitmap(file) },
+        painterFor = { remember { BitmapPainter(it) } },
+        contentDescription = "Compose logo",
+        contentScale = ContentScale.FillWidth,
+        modifier = Modifier.width(200.dp)
+    )
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -259,4 +344,58 @@ fun mainData() {
         //install other modules
     }
 
+}
+
+
+//fun printQR(file: File) {
+//
+//    if (Desktop.isDesktopSupported()) {
+//        val desktop = Desktop.getDesktop()
+//        try {
+//            desktop.print(file)
+//        } catch (e: PrinterException) {
+//            e.printStackTrace()
+//        }
+//    }
+//}
+
+
+fun printImage(imagePath: String) {
+    try {
+        val image = ImageIO.read(File(imagePath))
+        val printerJob = PrinterJob.getPrinterJob()
+        printerJob.setPrintable(PrintImagePage(image))
+        if (printerJob.printDialog()) {
+            printerJob.print()
+        }
+    } catch (e: Exception) {
+        // Handle exceptions appropriately
+        println("Error printing image: ${e.message}")
+    }
+}
+
+fun printQR(file: File) {
+    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.PRINT)) {
+        try {
+            val printJob = PrintServiceLookup.lookupDefaultPrintService()?.createPrintJob()
+            val printRequestAttributeSet = HashPrintRequestAttributeSet()
+            printRequestAttributeSet.add(MediaSizeName.ISO_A4)
+
+            printJob?.let { job ->
+                file.inputStream().use { inputStream ->
+                    val doc = SimpleDoc(inputStream, DocFlavor.INPUT_STREAM.AUTOSENSE, null)
+                    job.print(doc, printRequestAttributeSet)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    } else {
+        println("Printing is not supported on this system.")
+    }
+}
+
+fun selectPrintService(printServices: Array<PrintService>): PrintService? {
+    val selectedPrintService = ServiceUI.printDialog(null, 50, 50, printServices, printServices[0], null, null)
+    return selectedPrintService
 }

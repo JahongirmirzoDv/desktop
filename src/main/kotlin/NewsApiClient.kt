@@ -21,12 +21,12 @@ object NewsApiClient {
         }
     }
 
-    suspend fun createQR(data:String,size:Int,name:String): String {
+    suspend fun createQR(data:String,size:Int,name:String): HttpStatusCode {
         val img_path = "${documentsDir.path}/${name}.png"
-        val url = "http://api.qrserver.com/v1/create-qr-code/?data=${data}!&size=${size}x${size}"
+        val url = "http://api.qrserver.com/v1/create-qr-code/?data=${data}&size=${size}x${size}"
         val readBytes = client.get(url).readBytes()
         saveImageToFile(readBytes, img_path)
-        return img_path
+        return client.get(url).status
     }
 
 //    @OptIn(InternalAPI::class)

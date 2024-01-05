@@ -28,7 +28,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.0")
     implementation("com.google.code.gson:gson:2.8.9")
 
-    implementation("io.coil-kt:coil:2.5.0")
+//    implementation("io.coil-kt:coil:2.5.0")
+//    implementation("io.coil-kt:coil-compose:2.5.0")
 
 
 
@@ -40,6 +41,8 @@ dependencies {
     implementation("io.insert-koin:koin-core:3.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")
 
+    implementation("org.jetbrains.compose.desktop:desktop:1.2.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 
 
 
@@ -72,9 +75,21 @@ compose.desktop {
         mainClass = "MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            modules("java.sql")
+            jvmArgs += listOf("-Xmx2G")
+            args += listOf("-customArgument")
+            targetFormats(TargetFormat.Exe,TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "desktop"
             packageVersion = "1.0.0"
+            windows {
+                packageVersion = "1.0.0"
+                msiPackageVersion = "1.0.0"
+                exePackageVersion = "1.0.0"
+            }
+            tasks.register("exe") {
+                dependsOn("compileJava", "jar")
+                // other configurations
+            }
         }
     }
 }
