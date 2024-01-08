@@ -165,9 +165,10 @@ fun App(window: ComposeWindow) {
 
         if (files.isNotEmpty()) {
             scope.launch {
+                progress.value = true
                 delay(5000)
                 path = mergeZip(files, "${documentsDir.path}/${LocalDateTime.now()}_merge.zip")
-
+                progress.value = false
             }
         }
     }
