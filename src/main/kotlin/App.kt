@@ -21,3 +21,7 @@ class PrintImagePage(private val image: Image) : Printable {
     }
 }
 
+
+
+
+

@@ -2,20 +2,25 @@
 @file:OptIn(DelicateCoroutinesApi::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 
 //import dev.gitlive.firebase.FirebaseApp
+
+
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.AwtWindow
@@ -29,70 +34,22 @@ import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.resumable.ResumableUpload
 import io.github.jan.supabase.storage.resumable.SettingsResumableCache
 import io.github.jan.supabase.storage.storage
+import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import java.awt.*
+import java.awt.FileDialog
+import java.awt.print.PrinterJob
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.*
-import java.util.logging.Handler
-import androidx.compose.ui.platform.LocalDensity
-import javax.swing.filechooser.FileSystemView
-import kotlin.collections.ArrayList
-
-
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.loadImageBitmap
-import androidx.compose.ui.res.loadSvgPainter
-import androidx.compose.ui.res.loadXmlImageVector
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.singleWindowApplication
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.xml.sax.InputSource
-import java.awt.*
-import java.awt.print.*
-import java.io.IOException
-import java.net.URL
-
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.runtime.*
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import io.ktor.http.*
-import kotlinx.coroutines.flow.flow
-import java.awt.FileDialog
-import java.awt.geom.Dimension2D
-import java.awt.print.*
+import javax.imageio.ImageIO
 import javax.print.*
-
-
 import javax.print.attribute.HashPrintRequestAttributeSet
 import javax.print.attribute.standard.MediaSizeName
-import javax.swing.JFrame
-
-
-import java.awt.Image
-import java.awt.print.PrinterJob
-import javax.imageio.ImageIO
-import kotlin.io.path.fileVisitor
+import javax.swing.filechooser.FileSystemView
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
@@ -137,10 +94,11 @@ private fun LoginOptions() {
 fun App(window: ComposeWindow) {
 
     val scope = rememberCoroutineScope()
-    var text by remember { mutableStateOf("Hello, World!") }
     var isFileChooserOpen by remember { mutableStateOf(false) }
     var files by remember { mutableStateOf<List<File>>(emptyList()) }
     var serverPath by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(TextFieldValue("")) }
+
 
     val density = LocalDensity.current
 
@@ -149,7 +107,7 @@ fun App(window: ComposeWindow) {
     val documentsDir = fileSystemView.defaultDirectory
 
     var path by remember { mutableStateOf("") }
-    var img_path by remember { mutableStateOf(HttpStatusCode(404,"not found")) }
+    var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
 
 
     val array = ArrayList<File>()
@@ -165,10 +123,12 @@ fun App(window: ComposeWindow) {
 
         if (files.isNotEmpty()) {
             scope.launch {
-                progress.value = true
-                delay(5000)
-                path = mergeZip(files, "${documentsDir.path}/${LocalDateTime.now()}_merge.zip")
-                progress.value = false
+                if (text.text != ""){
+                    progress.value = true
+                    delay(5000)
+                    path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
+                    progress.value = false
+                }
             }
         }
     }
@@ -190,9 +150,10 @@ fun App(window: ComposeWindow) {
             ) {
 
                 repeat(files.size) { k ->
-                    Row (
-                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).padding(2.dp).background(Color.Blue.copy(alpha = 0.4f))
-                    ){
+                    Row(
+                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).padding(2.dp)
+                            .background(Color.Blue.copy(alpha = 0.4f))
+                    ) {
                         Text("${files[k].name} ", modifier = Modifier.padding(8.dp), color = Color.White)
                     }
                 }
@@ -206,11 +167,13 @@ fun App(window: ComposeWindow) {
                 Text("Tanlash")
             }
             Button(onClick = {
-                progress.value = true
                 scope.launch {
                     println("path:$path")
-                    val f = File(path).readBytes()
-                    serverPath = uploadData(f, path)
+                    if (path != ""){
+                        progress.value = true
+                        val f = File(path).readBytes()
+                        serverPath = uploadData(f, path)
+                    }
                 }
             }) {
                 Text("Yuklash")
@@ -219,7 +182,7 @@ fun App(window: ComposeWindow) {
                 scope.launch {
                     println("ss $serverPath")
 
-                    if (serverPath.isNotEmpty()){
+                    if (serverPath.isNotEmpty()) {
                         img_path = NewsApiClient.createQR(
                             "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
                             200,
@@ -231,7 +194,7 @@ fun App(window: ComposeWindow) {
                 Text("qr kod yaratish")
             }
 
-            if(img_path.isSuccess()){
+            if (img_path.isSuccess()) {
                 showQr(File("${documentsDir.path}/aa.png"))
             }
 
@@ -241,6 +204,12 @@ fun App(window: ComposeWindow) {
             }) {
                 Text("print")
             }
+            TextField(
+                value = text,
+                onValueChange = { newText ->
+                    text = newText
+                }, modifier = Modifier
+            )
 
             if (progress.value) {
                 CircularProgressIndicator(
@@ -384,25 +353,54 @@ fun printImage(imagePath: String) {
 }
 
 fun printQR(file: File) {
-    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.PRINT)) {
-        try {
-            val printJob = PrintServiceLookup.lookupDefaultPrintService()?.createPrintJob()
-            val printRequestAttributeSet = HashPrintRequestAttributeSet()
-            printRequestAttributeSet.add(MediaSizeName.ISO_A4)
+    if (file.name != "") {
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.PRINT)) {
+            try {
+                val printJob = PrintServiceLookup.lookupDefaultPrintService()?.createPrintJob()
+                val printRequestAttributeSet = HashPrintRequestAttributeSet()
+                printRequestAttributeSet.add(MediaSizeName.ISO_A4)
 
-            printJob?.let { job ->
-                file.inputStream().use { inputStream ->
-                    val doc = SimpleDoc(inputStream, DocFlavor.INPUT_STREAM.AUTOSENSE, null)
-                    job.print(doc, printRequestAttributeSet)
+                printJob?.let { job ->
+                    file.inputStream().use { inputStream ->
+                        val doc = SimpleDoc(inputStream, DocFlavor.INPUT_STREAM.AUTOSENSE, null)
+                        job.print(doc, printRequestAttributeSet)
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } else {
+            println("Printing is not supported on this system.")
         }
-    } else {
-        println("Printing is not supported on this system.")
     }
 }
+
+
+//@Composable
+//fun TextField(
+//    value: TextFieldValue,
+//    onValueChange: (TextFieldValue) -> Unit,
+//    modifier: Modifier = Modifier,
+//    enabled: Boolean = true,
+//    readOnly: Boolean = false,
+//    textStyle: TextStyle = LocalTextStyle.current,
+//    label: @Composable (() -> Unit)? = null,
+//    placeholder: @Composable (() -> Unit)? = null,
+//    leadingIcon: @Composable (() -> Unit)? = null,
+//    trailingIcon: @Composable (() -> Unit)? = null,
+//    isError: Boolean = false,
+//    visualTransformation: VisualTransformation = VisualTransformation.None,
+//    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+//    keyboardActions: KeyboardActions = KeyboardActions(),
+//    singleLine: Boolean = false,
+//    maxLines: Int = Int.MAX_VALUE,
+//    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+//    shape: CornerBasedShape =
+//        MaterialTheme.shapes.small.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
+//    colors: TextFieldColors = TextFieldDefaults.textFieldColors()
+//) {
+//}
+
 
 fun selectPrintService(printServices: Array<PrintService>): PrintService? {
     val selectedPrintService = ServiceUI.printDialog(null, 50, 50, printServices, printServices[0], null, null)
