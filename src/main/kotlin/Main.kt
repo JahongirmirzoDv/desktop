@@ -4,7 +4,7 @@
 //import dev.gitlive.firebase.FirebaseApp
 
 
-import NewsApiClient.documentsDir
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -16,14 +16,15 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.AwtWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -38,6 +39,7 @@ import io.github.jan.supabase.storage.storage
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import org.jetbrains.skia.FilterMode
 import java.awt.*
 import java.awt.FileDialog
 import java.awt.print.PrinterJob
@@ -93,24 +95,27 @@ private fun LoginOptions() {
 
 @Composable
 fun <T> Flow<T>.collectAsEffect(
-    context: CoroutineContext = EmptyCoroutineContext,
-    block: (T) -> Unit
+    context: CoroutineContext = EmptyCoroutineContext, block: (T) -> Unit
 ) {
     LaunchedEffect(key1 = Unit) {
         onEach(block).flowOn(context).launchIn(this)
     }
 }
 
-var imgSrc:File? = null
+var imgSrc: File? = null
+
 @Preview
 @Composable
 fun App(window: ComposeWindow) {
 
     val scope = rememberCoroutineScope()
     var isFileChooserOpen by remember { mutableStateOf(false) }
+    var openDialog by remember { mutableStateOf(false) }
     var files by remember { mutableStateOf<List<File>>(emptyList()) }
     var serverPath by remember { mutableStateOf("") }
     var text by remember { mutableStateOf(TextFieldValue("")) }
+
+    var slc by remember { mutableStateOf(false) }
 
 
 //    var imgSrc by remember { mutableStateOf(File("")) }
@@ -124,6 +129,8 @@ fun App(window: ComposeWindow) {
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val dialogState = remember { mutableStateOf(false) }
 
 
     val array = ArrayList<File>()
@@ -137,56 +144,129 @@ fun App(window: ComposeWindow) {
         }
         isFileChooserOpen = false
 
-        if (files.isNotEmpty()) {
-            scope.launch {
-                if (text.text != "") {
-                    progress.value = true
-                    delay(5000)
-                    path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
-                    progress.value = false
-                }
-            }
-        }
     }
 
     MaterialTheme {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(15.dp)) {
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.Center
+//            Row(
+//                modifier = Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.Center
+//            ) {
+//                Text("Fayllarni tanlang!", color = Color.Black, style = TextStyle(fontSize = 30.sp))
+//            }
+
+
+            Box(
+                contentAlignment = Alignment.Center, modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                    .background(Color.LightGray).clickable {
+                        if (text.text.isNotEmpty()) {
+                            isFileChooserOpen = true
+                            slc = false
+                        } else {
+                            dialogState.value = true
+                            openDialog = true
+                        }
+                    }
             ) {
-                Text("Fayllarni tanlang!", color = Color.Black, style = TextStyle(fontSize = 30.sp))
-            }
+                FlowColumn(
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.4f).horizontalScroll(
+                        rememberScrollState()
+                    ), horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
 
-            FlowColumn(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.4f).background(Color.LightGray).horizontalScroll(
-                    rememberScrollState()
-                ),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+                    repeat(files.size) { k ->
+                        Row(
+                            modifier = Modifier.clip(RoundedCornerShape(15.dp)).padding(2.dp)
+                                .background(Color.Blue.copy(alpha = 0.4f)),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("${files[k].name} ", modifier = Modifier.padding(8.dp), color = Color.White)
+                            AsyncImage(
+                                load = {
+                                    loadSvgPainter(
+                                        File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/cross.svg"),
+                                        density
+                                    )
+                                },
+                                painterFor = { remember { it } },
+                                contentDescription = "Compose logo",
+                                contentScale = ContentScale.FillWidth,
+                                modifier = Modifier.width(20.dp).padding(1.dp).clickable {
+                                    val list = files.toMutableList()
+                                    list.removeAt(k)
+                                    files = list
+                                }
+                            )
+                        }
+                    }
 
-                repeat(files.size) { k ->
-                    Row(
-                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).padding(2.dp)
-                            .background(Color.Blue.copy(alpha = 0.4f))
+                }
+                if (files.isEmpty()) {
+                    Column(
+                        modifier = Modifier.clip(
+                            RoundedCornerShape(20.dp),
+                        ).border(1.dp, Color.Gray, shape = RoundedCornerShape(20.dp)).padding(
+                            horizontal = 50.dp, vertical = 5.dp
+                        )
                     ) {
-                        Text("${files[k].name} ", modifier = Modifier.padding(8.dp), color = Color.White)
+                        AsyncImage(
+                            load = {
+                                loadSvgPainter(
+                                    File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/add.svg"),
+                                    density
+                                )
+                            },
+                            painterFor = { remember { it } },
+                            contentDescription = "Compose logo",
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier.width(100.dp)
+                        )
+                        Text("Fayl tanlash")
                     }
                 }
 
+                Box(modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
+                    if (progress.value){
+                        LimitedTrigger(modifier = Modifier.size(60.dp))
+                    }
+                }
             }
 
-
-            Button(onClick = {
-                isFileChooserOpen = true
-            }) {
-                Text("Tanlash")
+            if (openDialog) {
+                if (dialogState.value) {
+                    AlertDialog(
+                        onDismissRequest = {},
+                        confirmButton = {
+                            Button(onClick = {
+                                dialogState.value = false
+                            }) {
+                                Text("Yopish")
+                            }
+                        },
+                        text = { Text("Avval arxiv va qr kod uchun nom kiriting", color = Color.Black) })
+                }
             }
+//            Button(onClick = {
+//                isFileChooserOpen = true
+//                slc = false
+//            }) {
+//                Text("Tanlash")
+//            }
             Button(onClick = {
                 scope.launch {
+                    if (files.isNotEmpty()) {
+                        progress.value = true
+                        scope.launch {
+                            if (text.text != "") {
+                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
+                            }
+                        }
+                    }
+                    delay(5000)
                     println("path:$path")
                     if (path != "") {
-                        progress.value = true
+                        println("path if found:$path")
                         val f = File(path).readBytes()
                         serverPath = uploadData(f, path)
                     }
@@ -204,11 +284,13 @@ fun App(window: ComposeWindow) {
                             200,
                             text.text
                         )
+                        slc = true
                     }
                 }
             }) {
                 Text("qr kod yaratish")
             }
+            if (slc) {
                 AsyncImage(
                     load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
                     painterFor = { remember { BitmapPainter(it) } },
@@ -216,6 +298,7 @@ fun App(window: ComposeWindow) {
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier.width(200.dp)
                 )
+            }
 
 
             Button(onClick = {
@@ -225,23 +308,23 @@ fun App(window: ComposeWindow) {
                 Text("print")
             }
             TextField(
-                value = text,
-                onValueChange = { newText ->
+                value = text, onValueChange = { newText ->
                     text = newText
                 }, modifier = Modifier
             )
 
-            if (progress.value) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
-                )
-
-            }
+//            if (progress.value) {
+//                CircularProgressIndicator(
+//                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
+//                )
+//
+//            }
         }
     }
 }
+
 @Composable
-fun changeQr(file: File){
+fun changeQr(file: File) {
     AsyncImage(
         load = { loadImageBitmap(file) },
         painterFor = { remember { BitmapPainter(it) } },
@@ -261,6 +344,7 @@ fun showQr(file: File) {
         modifier = Modifier.width(200.dp)
     )
 }
+
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -316,11 +400,14 @@ suspend fun uploadData(bytes: ByteArray, path: String): String {
 }
 
 @Composable
-private fun CustomCircularProgressBar() {
-    CircularProgressIndicator(
-        modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
-    )
-
+private fun AlertDialog() {
+    val dialogState = remember { mutableStateOf(false) }
+    if (dialogState.value) {
+        AlertDialog(
+            onDismissRequest = { dialogState.value = false },
+            confirmButton = {},
+            text = { Text("Avval arxiv va qr kod uchun nom kiriting", color = Color.Black) })
+    }
 }
 
 fun main() = application {
@@ -427,6 +514,37 @@ fun printQR(file: File) {
 //        MaterialTheme.shapes.small.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
 //    colors: TextFieldColors = TextFieldDefaults.textFieldColors()
 //) {
+//}
+
+
+@Composable
+fun LimitedTrigger(modifier: Modifier) {
+
+        CircularProgressIndicator(modifier = modifier)
+}
+
+//@Composable
+//fun MyIndicator(indicatorProgress: Float) {
+//    var progress by animateFloatAsState(targetValue = ) // Progress value (0.0 to 1.0)
+//    if((progress * 10000) <= indicatorProgress)
+//    DisposableEffect(Unit) { // DisposableEffect for cleanup
+//        val handle = CoroutineScope(Dispatchers.IO).launch { // Launch coroutine in IO dispatcher
+//            while ( true ) {
+//                    delay(1000) // Update progress every second
+//                    progress = (progress + 0.1f) % 1.0f // Increment progress (capped at 1.0)
+//                if ((progress * 10000) == indicatorProgress){
+//                    break
+//                }
+//            }
+//        }
+//        onDispose { // Cleanup when composable disposes
+//            handle.cancel()
+//        }
+//    }
+//
+//    println("tn : $progress")
+//
+//    LinearProgressIndicator(progress = (progress), modifier = Modifier.fillMaxWidth())
 //}
 
 
