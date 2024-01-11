@@ -32,6 +32,8 @@ dependencies {
 //    implementation("io.coil-kt:coil-compose:2.5.0")
 
 
+    implementation("com.darkrockstudios:mpfilepicker:3.1.0")
+
 
     implementation(platform("io.github.jan-tennert.supabase:bom:2.0.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")

@@ -4,6 +4,7 @@
 //import dev.gitlive.firebase.FirebaseApp
 
 
+import NewsApiClient.documentsDir
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -36,8 +37,7 @@ import io.github.jan.supabase.storage.resumable.SettingsResumableCache
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
 import java.awt.*
 import java.awt.FileDialog
 import java.awt.print.PrinterJob
@@ -50,6 +50,8 @@ import javax.print.*
 import javax.print.attribute.HashPrintRequestAttributeSet
 import javax.print.attribute.standard.MediaSizeName
 import javax.swing.filechooser.FileSystemView
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
@@ -89,6 +91,17 @@ private fun LoginOptions() {
     }
 }
 
+@Composable
+fun <T> Flow<T>.collectAsEffect(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: (T) -> Unit
+) {
+    LaunchedEffect(key1 = Unit) {
+        onEach(block).flowOn(context).launchIn(this)
+    }
+}
+
+var imgSrc:File? = null
 @Preview
 @Composable
 fun App(window: ComposeWindow) {
@@ -100,11 +113,14 @@ fun App(window: ComposeWindow) {
     var text by remember { mutableStateOf(TextFieldValue("")) }
 
 
+//    var imgSrc by remember { mutableStateOf(File("")) }
+
+
     val density = LocalDensity.current
 
     val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
-    val documentsDir = fileSystemView.defaultDirectory
+    val documentsDir = fileSystemView.homeDirectory
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
@@ -123,7 +139,7 @@ fun App(window: ComposeWindow) {
 
         if (files.isNotEmpty()) {
             scope.launch {
-                if (text.text != ""){
+                if (text.text != "") {
                     progress.value = true
                     delay(5000)
                     path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
@@ -169,7 +185,7 @@ fun App(window: ComposeWindow) {
             Button(onClick = {
                 scope.launch {
                     println("path:$path")
-                    if (path != ""){
+                    if (path != "") {
                         progress.value = true
                         val f = File(path).readBytes()
                         serverPath = uploadData(f, path)
@@ -186,21 +202,25 @@ fun App(window: ComposeWindow) {
                         img_path = NewsApiClient.createQR(
                             "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
                             200,
-                            "aa"
+                            text.text
                         )
                     }
                 }
             }) {
                 Text("qr kod yaratish")
             }
+                AsyncImage(
+                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
+                    painterFor = { remember { BitmapPainter(it) } },
+                    contentDescription = "Compose logo",
+                    contentScale = ContentScale.FillWidth,
+                    modifier = Modifier.width(200.dp)
+                )
 
-            if (img_path.isSuccess()) {
-                showQr(File("${documentsDir.path}/aa.png"))
-            }
 
             Button(onClick = {
 //                printImage("${documentsDir.path}/aa.png")
-                printQR(File("${documentsDir.path}/aa.png"))
+                printQR(File("${documentsDir.path}/${text.text}.png"))
             }) {
                 Text("print")
             }
@@ -218,9 +238,17 @@ fun App(window: ComposeWindow) {
 
             }
         }
-
-
     }
+}
+@Composable
+fun changeQr(file: File){
+    AsyncImage(
+        load = { loadImageBitmap(file) },
+        painterFor = { remember { BitmapPainter(it) } },
+        contentDescription = "Compose logo",
+        contentScale = ContentScale.FillWidth,
+        modifier = Modifier.width(200.dp)
+    )
 }
 
 @Composable
