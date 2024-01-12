@@ -125,7 +125,7 @@ fun App(window: ComposeWindow) {
 
     val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
-    val documentsDir = fileSystemView.homeDirectory
+    val documentsDir = fileSystemView.defaultDirectory
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
@@ -185,7 +185,7 @@ fun App(window: ComposeWindow) {
                             AsyncImage(
                                 load = {
                                     loadSvgPainter(
-                                        File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/cross.svg"),
+                                        File("src/main/resources/image/cross.svg"),
                                         density
                                     )
                                 },
@@ -213,7 +213,7 @@ fun App(window: ComposeWindow) {
                         AsyncImage(
                             load = {
                                 loadSvgPainter(
-                                    File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/add.svg"),
+                                    File("src/main/resources/image/add.svg"),
                                     density
                                 )
                             },
