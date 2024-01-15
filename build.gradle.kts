@@ -83,6 +83,7 @@ compose.desktop {
             targetFormats(TargetFormat.Exe,TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "desktop"
             packageVersion = "1.0.0"
+
             windows {
                 packageVersion = "1.0.0"
                 msiPackageVersion = "1.0.0"

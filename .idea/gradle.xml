@@ -4,22 +4,21 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
-        <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="jbr-17" />
+        <option name="externalProjectPath" value="$USER_HOME$/Downloads/LoggerSlf4j" />
+        <option name="gradleJvm" value="openjdk-21" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/log" />
+            <option value="$USER_HOME$/Downloads/LoggerSlf4j" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
       <GradleProjectSettings>
-        <option name="externalProjectPath" value="$USER_HOME$/Downloads/LoggerSlf4j" />
-        <option name="gradleJvm" value="jbr-17" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="$USER_HOME$/Downloads/LoggerSlf4j" />
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/log" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="false" />
