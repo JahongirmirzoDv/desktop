@@ -200,8 +200,8 @@ fun App(window: ComposeWindow) {
                             )
                         }
                     }
-
                 }
+
                 if (files.isEmpty()) {
                     Column(
                         modifier = Modifier.clip(
@@ -233,6 +233,87 @@ fun App(window: ComposeWindow) {
                 }
             }
 
+            Column (modifier = Modifier.padding(vertical = 15.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+
+                    Box (modifier = Modifier.weight(0.3f)){
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (files.isNotEmpty()) {
+                                        progress.value = true
+                                        scope.launch {
+                                            if (text.text != "") {
+                                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
+                                            }
+                                        }
+                                    }
+                                    delay(5000)
+                                    println("path:$path")
+                                    if (path != "") {
+                                        println("path if found:$path")
+                                        val f = File(path).readBytes()
+                                        serverPath = uploadData(f, path)
+                                    }
+                                }
+                            },
+                        ) {
+                            Text("Yuklash")
+                        }
+                    }
+                    Box(modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center) {
+                        TextField(
+                            value = text, onValueChange = { newText ->
+                                text = newText
+                            }
+                        )
+                    }
+                }
+                Row {
+                    Box(modifier = Modifier.weight(0.3f)) {
+                        Button(onClick = {
+                            scope.launch {
+                                println("ss $serverPath")
+
+                                if (serverPath.isNotEmpty()) {
+                                    img_path = NewsApiClient.createQR(
+                                        "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
+                                        200,
+                                        text.text
+                                    )
+                                    slc = true
+                                }
+                            }
+                        }) {
+                            Text("qr kod yaratish")
+                        }
+                    }
+                    Box (modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center){
+                        Box (modifier = Modifier.background(Color.LightGray)){
+                            if (slc) {
+                                AsyncImage(
+                                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
+                                    painterFor = { remember { BitmapPainter(it) } },
+                                    contentDescription = "Compose logo",
+                                    contentScale = ContentScale.FillWidth,
+                                    modifier = Modifier.width(200.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                if (slc){
+                    Button(onClick = {
+//                printImage("${documentsDir.path}/aa.png")
+                        printQR(File("${documentsDir.path}/${text.text}.png"))
+                    }) {
+                        Text("print")
+                    }
+
+                }
+            }
+
+
             if (openDialog) {
                 if (dialogState.value) {
                     AlertDialog(
@@ -247,78 +328,6 @@ fun App(window: ComposeWindow) {
                         text = { Text("Avval arxiv va qr kod uchun nom kiriting", color = Color.Black) })
                 }
             }
-//            Button(onClick = {
-//                isFileChooserOpen = true
-//                slc = false
-//            }) {
-//                Text("Tanlash")
-//            }
-            Button(onClick = {
-                scope.launch {
-                    if (files.isNotEmpty()) {
-                        progress.value = true
-                        scope.launch {
-                            if (text.text != "") {
-                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
-                            }
-                        }
-                    }
-                    delay(5000)
-                    println("path:$path")
-                    if (path != "") {
-                        println("path if found:$path")
-                        val f = File(path).readBytes()
-                        serverPath = uploadData(f, path)
-                    }
-                }
-            }) {
-                Text("Yuklash")
-            }
-            Button(onClick = {
-                scope.launch {
-                    println("ss $serverPath")
-
-                    if (serverPath.isNotEmpty()) {
-                        img_path = NewsApiClient.createQR(
-                            "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
-                            200,
-                            text.text
-                        )
-                        slc = true
-                    }
-                }
-            }) {
-                Text("qr kod yaratish")
-            }
-            if (slc) {
-                AsyncImage(
-                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
-                    painterFor = { remember { BitmapPainter(it) } },
-                    contentDescription = "Compose logo",
-                    contentScale = ContentScale.FillWidth,
-                    modifier = Modifier.width(200.dp)
-                )
-            }
-
-
-            Button(onClick = {
-//                printImage("${documentsDir.path}/aa.png")
-                printQR(File("${documentsDir.path}/${text.text}.png"))
-            }) {
-                Text("print")
-            }
-            TextField(
-                value = text, onValueChange = { newText ->
-                    text = newText
-                }, modifier = Modifier
-            )
-
-//            if (progress.value) {
-//                CircularProgressIndicator(
-//                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
-//                )
-//
-//            }
         }
     }
 }
