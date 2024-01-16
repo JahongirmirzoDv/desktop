@@ -59,41 +59,6 @@ lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
 
 @Composable
-@Preview
-private fun LoginOptions() {
-    val scope = rememberCoroutineScope()
-    MaterialTheme {
-
-        Column(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f).systemBarsPadding().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.SpaceEvenly,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Button(
-                onClick = {
-                    scope.launch {
-
-                    }
-                },
-            ) {
-                Text(text = "Login with correct password")
-            }
-
-
-            Button(
-                onClick = {
-
-                }, colors = ButtonDefaults.buttonColors()
-            ) {
-                Text(text = "Login with wrong password")
-            }
-
-        }
-    }
-}
-
-@Composable
 fun <T> Flow<T>.collectAsEffect(
     context: CoroutineContext = EmptyCoroutineContext, block: (T) -> Unit
 ) {
@@ -227,16 +192,16 @@ fun App(window: ComposeWindow) {
                 }
 
                 Box(modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
-                    if (progress.value){
+                    if (progress.value) {
                         LimitedTrigger(modifier = Modifier.size(60.dp))
                     }
                 }
             }
 
-            Column (modifier = Modifier.padding(vertical = 15.dp)) {
+            Column(modifier = Modifier.padding(vertical = 15.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
 
-                    Box (modifier = Modifier.weight(0.3f)){
+                    Box(modifier = Modifier.weight(0.2f)) {
                         Button(
                             onClick = {
                                 scope.launch {
@@ -251,12 +216,36 @@ fun App(window: ComposeWindow) {
                                     delay(5000)
                                     println("path:$path")
                                     if (path != "") {
-                                        println("path if found:$path")
-                                        val f = File(path).readBytes()
-                                        serverPath = uploadData(f, path)
+                                        try {
+                                            println("path if found:$path")
+                                            val f = File(path).readBytes()
+//                                        serverPath = uploadData(f, path)
+
+                                            val formatter = SimpleDateFormat("yyyy-MM-dd")
+                                            val date = Date()
+                                            val current = formatter.format(date)
+                                            val date_time = LocalDateTime.now()
+                                            val file_path = "$current/files/${date_time}_merge.zip"
+                                            val upload: ResumableUpload =
+                                                supabase.storage.from("test").resumable.createOrContinueUpload(
+                                                    f,
+                                                    "",
+                                                    file_path
+                                                )
+
+                                            upload.stateFlow.onEach {
+                                                if (it.isDone){
+                                                    progress.value = false
+                                                    serverPath = file_path
+                                                }
+                                            }.launchIn(CoroutineScope(GlobalScope.coroutineContext))
+                                            upload.startOrResumeUploading()
+                                        } catch (e: Exception) {
+                                            println(e.message)
+                                        }
                                     }
                                 }
-                            },
+                            }, modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Yuklash")
                         }
@@ -270,26 +259,30 @@ fun App(window: ComposeWindow) {
                     }
                 }
                 Row {
-                    Box(modifier = Modifier.weight(0.3f)) {
+                    Box(modifier = Modifier.weight(0.2f)) {
                         Button(onClick = {
                             scope.launch {
-                                println("ss $serverPath")
-
-                                if (serverPath.isNotEmpty()) {
-                                    img_path = NewsApiClient.createQR(
-                                        "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
-                                        200,
-                                        text.text
-                                    )
-                                    slc = true
+                                try {
+                                    println("ss $serverPath")
+                                    if (serverPath.isNotEmpty()) {
+                                        img_path = NewsApiClient.createQR(
+                                            "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
+                                            200,
+                                            text.text
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    println(e.message)
                                 }
+                                slc = true
                             }
-                        }) {
-                            Text("qr kod yaratish")
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text("QR kod yaratish")
                         }
                     }
-                    Box (modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center){
-                        Box (modifier = Modifier.background(Color.LightGray)){
+
+                    Box(modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.background(Color.LightGray)) {
                             if (slc) {
                                 AsyncImage(
                                     load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
@@ -302,7 +295,8 @@ fun App(window: ComposeWindow) {
                         }
                     }
                 }
-                if (slc){
+
+                if (slc) {
                     Button(onClick = {
 //                printImage("${documentsDir.path}/aa.png")
                         printQR(File("${documentsDir.path}/${text.text}.png"))
@@ -399,13 +393,26 @@ suspend fun uploadData(bytes: ByteArray, path: String): String {
     val current = formatter.format(date)
     val date_time = LocalDateTime.now()
     val file_path = "$current/files/${date_time}_merge.zip"
-    val upload: ResumableUpload = supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", file_path)
+    val upload: ResumableUpload =
+        supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", file_path)
 
     upload.stateFlow.onEach {
         if (it.isDone) progress.value = false
     }.launchIn(CoroutineScope(GlobalScope.coroutineContext))
     upload.startOrResumeUploading()
     return file_path
+}
+
+suspend fun uploadData(bytes: ByteArray) {
+//    val upload: ResumableUpload = supabase.storage.from("test")
+//        .resumable.createOrContinueUpload(bytes, "source", "file_path")
+//
+//    upload.stateFlow
+//        .onEach {
+//            println(it.progress)
+//        }
+//        .launchIn(scope = )
+//    upload.startOrResumeUploading()
 }
 
 @Composable
@@ -529,7 +536,7 @@ fun printQR(file: File) {
 @Composable
 fun LimitedTrigger(modifier: Modifier) {
 
-        CircularProgressIndicator(modifier = modifier)
+    CircularProgressIndicator(modifier = modifier)
 }
 
 //@Composable
