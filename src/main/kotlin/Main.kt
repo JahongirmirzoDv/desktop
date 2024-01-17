@@ -10,6 +10,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -20,9 +23,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.AwtWindow
@@ -58,40 +64,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
 
-@Composable
-@Preview
-private fun LoginOptions() {
-    val scope = rememberCoroutineScope()
-    MaterialTheme {
-
-        Column(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f).systemBarsPadding().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.SpaceEvenly,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Button(
-                onClick = {
-                    scope.launch {
-
-                    }
-                },
-            ) {
-                Text(text = "Login with correct password")
-            }
-
-
-            Button(
-                onClick = {
-
-                }, colors = ButtonDefaults.buttonColors()
-            ) {
-                Text(text = "Login with wrong password")
-            }
-
-        }
-    }
-}
 
 @Composable
 fun <T> Flow<T>.collectAsEffect(
@@ -129,7 +101,6 @@ fun App(window: ComposeWindow) {
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
-    val snackbarHostState = remember { SnackbarHostState() }
     val dialogState = remember { mutableStateOf(false) }
 
 
@@ -200,8 +171,8 @@ fun App(window: ComposeWindow) {
                             )
                         }
                     }
-
                 }
+
                 if (files.isEmpty()) {
                     Column(
                         modifier = Modifier.clip(
@@ -227,11 +198,100 @@ fun App(window: ComposeWindow) {
                 }
 
                 Box(modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
-                    if (progress.value){
+                    if (progress.value) {
                         LimitedTrigger(modifier = Modifier.size(60.dp))
                     }
                 }
             }
+
+            Column(modifier = Modifier.padding(vertical = 15.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+
+                    Box(modifier = Modifier.weight(0.3f)) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (files.isNotEmpty()) {
+                                        progress.value = true
+                                        scope.launch {
+                                            if (text.text != "") {
+                                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
+                                            }
+                                        }
+                                    }
+                                    delay(5000)
+                                    println("path:$path")
+                                    if (path != "") {
+                                        println("path if found:$path")
+                                        val f = File(path).readBytes()
+                                        try {
+                                            serverPath = uploadData(f, path)
+                                        } catch (e: Exception) {
+                                            println(e.message)
+                                        }
+                                    }
+                                }
+                            },
+                        ) {
+                            Text("Yuklash")
+                        }
+                    }
+                    Box(modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center) {
+                        TextField(
+                            value = text, onValueChange = { newText ->
+                                text = newText
+                            }
+                        )
+                    }
+                }
+                Row {
+                    Box(modifier = Modifier.weight(0.3f)) {
+                        Button(onClick = {
+                            scope.launch {
+                                println("ss $serverPath")
+
+                                if (serverPath.isNotEmpty()) {
+                                    try {
+                                        img_path = NewsApiClient.createQR(
+                                            "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
+                                            200,
+                                            text.text
+                                        )
+                                        slc = true
+                                    } catch (e: Exception) {
+                                        println(e.message)
+                                    }
+                                }
+                            }
+                        }) {
+                            Text("qr kod yaratish")
+                        }
+                    }
+                    Box(modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.background(Color.LightGray)) {
+                            if (slc) {
+                                AsyncImage(
+                                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
+                                    painterFor = { remember { BitmapPainter(it) } },
+                                    contentDescription = "Compose logo",
+                                    contentScale = ContentScale.FillWidth,
+                                    modifier = Modifier.width(200.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                if (slc) {
+                    Button(onClick = {
+//                printImage("${documentsDir.path}/aa.png")
+                        printQR(File("${documentsDir.path}/${text.text}.png"))
+                    }) {
+                        Text("print")
+                    }
+
+                }
+            }
+
 
             if (openDialog) {
                 if (dialogState.value) {
@@ -247,78 +307,6 @@ fun App(window: ComposeWindow) {
                         text = { Text("Avval arxiv va qr kod uchun nom kiriting", color = Color.Black) })
                 }
             }
-//            Button(onClick = {
-//                isFileChooserOpen = true
-//                slc = false
-//            }) {
-//                Text("Tanlash")
-//            }
-            Button(onClick = {
-                scope.launch {
-                    if (files.isNotEmpty()) {
-                        progress.value = true
-                        scope.launch {
-                            if (text.text != "") {
-                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
-                            }
-                        }
-                    }
-                    delay(5000)
-                    println("path:$path")
-                    if (path != "") {
-                        println("path if found:$path")
-                        val f = File(path).readBytes()
-                        serverPath = uploadData(f, path)
-                    }
-                }
-            }) {
-                Text("Yuklash")
-            }
-            Button(onClick = {
-                scope.launch {
-                    println("ss $serverPath")
-
-                    if (serverPath.isNotEmpty()) {
-                        img_path = NewsApiClient.createQR(
-                            "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
-                            200,
-                            text.text
-                        )
-                        slc = true
-                    }
-                }
-            }) {
-                Text("qr kod yaratish")
-            }
-            if (slc) {
-                AsyncImage(
-                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
-                    painterFor = { remember { BitmapPainter(it) } },
-                    contentDescription = "Compose logo",
-                    contentScale = ContentScale.FillWidth,
-                    modifier = Modifier.width(200.dp)
-                )
-            }
-
-
-            Button(onClick = {
-//                printImage("${documentsDir.path}/aa.png")
-                printQR(File("${documentsDir.path}/${text.text}.png"))
-            }) {
-                Text("print")
-            }
-            TextField(
-                value = text, onValueChange = { newText ->
-                    text = newText
-                }, modifier = Modifier
-            )
-
-//            if (progress.value) {
-//                CircularProgressIndicator(
-//                    modifier = Modifier.size(100.dp), color = Color.Green, strokeWidth = 10.dp
-//                )
-//
-//            }
         }
     }
 }
@@ -410,10 +398,12 @@ private fun AlertDialog() {
     }
 }
 
+var iconIndex = mutableStateOf(1)
 fun main() = application {
+
     mainData()
 //    initKoin()
-    Window(onCloseRequest = ::exitApplication, title = "YourNews") {
+    Window(onCloseRequest = ::exitApplication, title = "F.A.H.R") {
 
 //        LoginOptions()
         App(window)
@@ -520,7 +510,7 @@ fun printQR(file: File) {
 @Composable
 fun LimitedTrigger(modifier: Modifier) {
 
-        CircularProgressIndicator(modifier = modifier)
+    CircularProgressIndicator(modifier = modifier)
 }
 
 //@Composable
