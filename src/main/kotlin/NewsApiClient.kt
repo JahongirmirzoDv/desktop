@@ -1,12 +1,10 @@
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.util.*
 import java.io.File
 import java.io.FileOutputStream
 import javax.swing.filechooser.FileSystemView
@@ -21,8 +19,8 @@ object NewsApiClient {
         }
     }
 
-    suspend fun createQR(data:String,size:Int,name:String): HttpStatusCode {
-        val img_path = "${documentsDir.path}/${name}.png"
+    suspend fun createQR(data: String, size: Int, name: String, currentDirectory: String): HttpStatusCode {
+        val img_path = "${currentDirectory}/${name}.png"
         val url = "http://api.qrserver.com/v1/create-qr-code/?data=${data}&size=${size}x${size}"
         val readBytes = client.get(url).readBytes()
         saveImageToFile(readBytes, img_path)

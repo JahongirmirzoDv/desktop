@@ -4,7 +4,6 @@
 //import dev.gitlive.firebase.FirebaseApp
 
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -16,13 +15,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.AwtWindow
@@ -39,7 +35,6 @@ import io.github.jan.supabase.storage.storage
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import org.jetbrains.skia.FilterMode
 import java.awt.*
 import java.awt.FileDialog
 import java.awt.print.PrinterJob
@@ -51,12 +46,14 @@ import javax.imageio.ImageIO
 import javax.print.*
 import javax.print.attribute.HashPrintRequestAttributeSet
 import javax.print.attribute.standard.MediaSizeName
+import javax.swing.JFileChooser
 import javax.swing.filechooser.FileSystemView
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
+
 
 @Composable
 fun <T> Flow<T>.collectAsEffect(
@@ -90,11 +87,10 @@ fun App(window: ComposeWindow) {
 
     val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
-    val documentsDir = fileSystemView.defaultDirectory
+    var documentsDir  by remember { mutableStateOf(JFileChooser()) }
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
-    val snackbarHostState = remember { SnackbarHostState() }
     val dialogState = remember { mutableStateOf(false) }
 
 
@@ -108,19 +104,10 @@ fun App(window: ComposeWindow) {
             files = array
         }
         isFileChooserOpen = false
-
     }
 
     MaterialTheme {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(15.dp)) {
-
-//            Row(
-//                modifier = Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.Center
-//            ) {
-//                Text("Fayllarni tanlang!", color = Color.Black, style = TextStyle(fontSize = 30.sp))
-//            }
-
-
             Box(
                 contentAlignment = Alignment.Center, modifier = Modifier.clip(RoundedCornerShape(20.dp))
                     .background(Color.LightGray).clickable {
@@ -150,7 +137,7 @@ fun App(window: ComposeWindow) {
                             AsyncImage(
                                 load = {
                                     loadSvgPainter(
-                                        File("src/main/resources/image/cross.svg"),
+                                        File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/cross.svg"),
                                         density
                                     )
                                 },
@@ -178,7 +165,7 @@ fun App(window: ComposeWindow) {
                         AsyncImage(
                             load = {
                                 loadSvgPainter(
-                                    File("src/main/resources/image/add.svg"),
+                                    File("/Users/jahongirmirzotolqinov/Documents/idea/desktop/desktop/src/main/resources/image/add.svg"),
                                     density
                                 )
                             },
@@ -205,11 +192,14 @@ fun App(window: ComposeWindow) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    if (files.isNotEmpty()) {
+//                                    documentsDir = JFileChooser()
+                                    documentsDir.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                                    documentsDir.showSaveDialog(null)
+                                    if (files.isNotEmpty() && documentsDir.currentDirectory.canWrite()) {
                                         progress.value = true
                                         scope.launch {
                                             if (text.text != "") {
-                                                path = mergeZip(files, "${documentsDir.path}/${text.text}.zip")
+                                                path = mergeZip(files, "${documentsDir.currentDirectory}/${text.text}.zip")
                                             }
                                         }
                                     }
@@ -268,7 +258,8 @@ fun App(window: ComposeWindow) {
                                         img_path = NewsApiClient.createQR(
                                             "https://dqoixoqoxdpxtowuxnke.supabase.co/storage/v1/object/public/test/${serverPath}",
                                             200,
-                                            text.text
+                                            text.text,
+                                            documentsDir.currentDirectory.path
                                         )
                                     }
                                 } catch (e: Exception) {
@@ -280,12 +271,11 @@ fun App(window: ComposeWindow) {
                             Text("QR kod yaratish")
                         }
                     }
-
                     Box(modifier = Modifier.weight(0.7f), contentAlignment = Alignment.Center) {
                         Box(modifier = Modifier.background(Color.LightGray)) {
                             if (slc) {
                                 AsyncImage(
-                                    load = { loadImageBitmap(File("${documentsDir.path}/${text.text}.png")) },
+                                    load = { loadImageBitmap(File("${documentsDir.currentDirectory}/${text.text}.png")) },
                                     painterFor = { remember { BitmapPainter(it) } },
                                     contentDescription = "Compose logo",
                                     contentScale = ContentScale.FillWidth,
@@ -295,18 +285,15 @@ fun App(window: ComposeWindow) {
                         }
                     }
                 }
-
                 if (slc) {
                     Button(onClick = {
 //                printImage("${documentsDir.path}/aa.png")
-                        printQR(File("${documentsDir.path}/${text.text}.png"))
+                        printQR(File("${documentsDir.currentDirectory}/${text.text}.png"))
                     }) {
                         Text("print")
                     }
-
                 }
             }
-
 
             if (openDialog) {
                 if (dialogState.value) {
@@ -403,18 +390,6 @@ suspend fun uploadData(bytes: ByteArray, path: String): String {
     return file_path
 }
 
-suspend fun uploadData(bytes: ByteArray) {
-//    val upload: ResumableUpload = supabase.storage.from("test")
-//        .resumable.createOrContinueUpload(bytes, "source", "file_path")
-//
-//    upload.stateFlow
-//        .onEach {
-//            println(it.progress)
-//        }
-//        .launchIn(scope = )
-//    upload.startOrResumeUploading()
-}
-
 @Composable
 private fun AlertDialog() {
     val dialogState = remember { mutableStateOf(false) }
@@ -426,16 +401,12 @@ private fun AlertDialog() {
     }
 }
 
+var iconIndex = mutableStateOf(1)
 fun main() = application {
     mainData()
-//    initKoin()
-    Window(onCloseRequest = ::exitApplication, title = "YourNews") {
-
-//        LoginOptions()
+    Window(onCloseRequest = ::exitApplication, title = "F.A.H.R") {
         App(window)
-
     }
-
 }
 
 fun mainData() {
@@ -452,7 +423,6 @@ fun mainData() {
         install(Postgrest)
         //install other modules
     }
-
 }
 
 
@@ -568,3 +538,7 @@ fun selectPrintService(printServices: Array<PrintService>): PrintService? {
     val selectedPrintService = ServiceUI.printDialog(null, 50, 50, printServices, printServices[0], null, null)
     return selectedPrintService
 }
+
+
+
+
