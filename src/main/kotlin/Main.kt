@@ -1,5 +1,7 @@
 //import android.app.Application
-@file:OptIn(DelicateCoroutinesApi::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@file:OptIn(DelicateCoroutinesApi::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class,
+
+)
 
 //import dev.gitlive.firebase.FirebaseApp
 
@@ -53,19 +55,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
-
-
-@Composable
-fun <T> Flow<T>.collectAsEffect(
-    context: CoroutineContext = EmptyCoroutineContext, block: (T) -> Unit
-) {
-    LaunchedEffect(key1 = Unit) {
-        onEach(block).flowOn(context).launchIn(this)
-    }
-}
-
-var imgSrc: File? = null
-
 @Preview
 @Composable
 fun App(window: ComposeWindow) {
@@ -80,12 +69,8 @@ fun App(window: ComposeWindow) {
     var slc by remember { mutableStateOf(false) }
 
 
-//    var imgSrc by remember { mutableStateOf(File("")) }
-
-
     val density = LocalDensity.current
 
-    val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
     val documentsDir  by remember { mutableStateOf(JFileChooser()) }
 
@@ -313,46 +298,6 @@ fun App(window: ComposeWindow) {
     }
 }
 
-@Composable
-fun changeQr(file: File) {
-    AsyncImage(
-        load = { loadImageBitmap(file) },
-        painterFor = { remember { BitmapPainter(it) } },
-        contentDescription = "Compose logo",
-        contentScale = ContentScale.FillWidth,
-        modifier = Modifier.width(200.dp)
-    )
-}
-
-@Composable
-fun showQr(file: File) {
-    AsyncImage(
-        load = { loadImageBitmap(file) },
-        painterFor = { remember { BitmapPainter(it) } },
-        contentDescription = "Compose logo",
-        contentScale = ContentScale.FillWidth,
-        modifier = Modifier.width(200.dp)
-    )
-}
-
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun FileDialog(
-    parent: Frame? = null, onCloseRequest: (result: String?) -> Unit
-) = AwtWindow(
-    create = {
-        object : FileDialog(parent, "Choose a file", LOAD) {
-            override fun setVisible(value: Boolean) {
-                super.setVisible(value)
-                if (value) {
-                    onCloseRequest(file)
-                }
-            }
-        }
-    }, dispose = FileDialog::dispose
-)
-
 fun openFileDialog(
     window: ComposeWindow, title: String, allowedExtensions: List<String>, allowMultiSelection: Boolean = true
 ): Set<File> {
@@ -374,34 +319,24 @@ fun openFileDialog(
     }.files.toSet()
 }
 
-suspend fun uploadData(bytes: ByteArray, path: String): String {
-    val formatter = SimpleDateFormat("yyyy-MM-dd")
-    val date = Date()
-    val current = formatter.format(date)
-    val date_time = LocalDateTime.now()
-    val file_path = "$current/files/${date_time}_merge.zip"
-    val upload: ResumableUpload =
-        supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", file_path)
+//suspend fun uploadData(bytes: ByteArray, path: String): String {
+//    val formatter = SimpleDateFormat("yyyy-MM-dd")
+//    val date = Date()
+//    val current = formatter.format(date)
+//    val date_time = LocalDateTime.now()
+//    val file_path = "$current/files/${date_time}_merge.zip"
+//    val upload: ResumableUpload =
+//        supabase.storage.from("test").resumable.createOrContinueUpload(bytes, "", file_path)
+//
+//    upload.stateFlow.onEach {
+//        if (it.isDone) progress.value = false
+//    }.launchIn(CoroutineScope(GlobalScope.coroutineContext))
+//    upload.startOrResumeUploading()
+//    return file_path
+//}
 
-    upload.stateFlow.onEach {
-        if (it.isDone) progress.value = false
-    }.launchIn(CoroutineScope(GlobalScope.coroutineContext))
-    upload.startOrResumeUploading()
-    return file_path
-}
 
-@Composable
-private fun AlertDialog() {
-    val dialogState = remember { mutableStateOf(false) }
-    if (dialogState.value) {
-        AlertDialog(
-            onDismissRequest = { dialogState.value = false },
-            confirmButton = {},
-            text = { Text("Avval arxiv va qr kod uchun nom kiriting", color = Color.Black) })
-    }
-}
 
-var iconIndex = mutableStateOf(1)
 fun main() = application {
     mainData()
     Window(onCloseRequest = ::exitApplication, title = "F.A.H.R") {
@@ -425,33 +360,6 @@ fun mainData() {
     }
 }
 
-
-//fun printQR(file: File) {
-//
-//    if (Desktop.isDesktopSupported()) {
-//        val desktop = Desktop.getDesktop()
-//        try {
-//            desktop.print(file)
-//        } catch (e: PrinterException) {
-//            e.printStackTrace()
-//        }
-//    }
-//}
-
-
-fun printImage(imagePath: String) {
-    try {
-        val image = ImageIO.read(File(imagePath))
-        val printerJob = PrinterJob.getPrinterJob()
-        printerJob.setPrintable(PrintImagePage(image))
-        if (printerJob.printDialog()) {
-            printerJob.print()
-        }
-    } catch (e: Exception) {
-        // Handle exceptions appropriately
-        println("Error printing image: ${e.message}")
-    }
-}
 
 fun printQR(file: File) {
     if (file.name != "") {
@@ -477,31 +385,6 @@ fun printQR(file: File) {
 }
 
 
-//@Composable
-//fun TextField(
-//    value: TextFieldValue,
-//    onValueChange: (TextFieldValue) -> Unit,
-//    modifier: Modifier = Modifier,
-//    enabled: Boolean = true,
-//    readOnly: Boolean = false,
-//    textStyle: TextStyle = LocalTextStyle.current,
-//    label: @Composable (() -> Unit)? = null,
-//    placeholder: @Composable (() -> Unit)? = null,
-//    leadingIcon: @Composable (() -> Unit)? = null,
-//    trailingIcon: @Composable (() -> Unit)? = null,
-//    isError: Boolean = false,
-//    visualTransformation: VisualTransformation = VisualTransformation.None,
-//    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-//    keyboardActions: KeyboardActions = KeyboardActions(),
-//    singleLine: Boolean = false,
-//    maxLines: Int = Int.MAX_VALUE,
-//    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-//    shape: CornerBasedShape =
-//        MaterialTheme.shapes.small.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
-//    colors: TextFieldColors = TextFieldDefaults.textFieldColors()
-//) {
-//}
-
 
 @Composable
 fun LimitedTrigger(modifier: Modifier) {
@@ -509,29 +392,6 @@ fun LimitedTrigger(modifier: Modifier) {
     CircularProgressIndicator(modifier = modifier)
 }
 
-//@Composable
-//fun MyIndicator(indicatorProgress: Float) {
-//    var progress by animateFloatAsState(targetValue = ) // Progress value (0.0 to 1.0)
-//    if((progress * 10000) <= indicatorProgress)
-//    DisposableEffect(Unit) { // DisposableEffect for cleanup
-//        val handle = CoroutineScope(Dispatchers.IO).launch { // Launch coroutine in IO dispatcher
-//            while ( true ) {
-//                    delay(1000) // Update progress every second
-//                    progress = (progress + 0.1f) % 1.0f // Increment progress (capped at 1.0)
-//                if ((progress * 10000) == indicatorProgress){
-//                    break
-//                }
-//            }
-//        }
-//        onDispose { // Cleanup when composable disposes
-//            handle.cancel()
-//        }
-//    }
-//
-//    println("tn : $progress")
-//
-//    LinearProgressIndicator(progress = (progress), modifier = Modifier.fillMaxWidth())
-//}
 
 
 fun selectPrintService(printServices: Array<PrintService>): PrintService? {
