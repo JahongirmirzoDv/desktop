@@ -87,7 +87,7 @@ fun App(window: ComposeWindow) {
 
     val fileSystemView = FileSystemView.getFileSystemView()
     // Get the Documents folder
-    var documentsDir  by remember { mutableStateOf(JFileChooser()) }
+    val documentsDir  by remember { mutableStateOf(JFileChooser()) }
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
