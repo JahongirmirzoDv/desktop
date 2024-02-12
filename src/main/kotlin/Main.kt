@@ -1,9 +1,4 @@
-//import android.app.Application
-@file:OptIn(DelicateCoroutinesApi::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class,
-
-)
-
-//import dev.gitlive.firebase.FirebaseApp
+@file:OptIn(DelicateCoroutinesApi::class, ExperimentalLayoutApi::class)
 
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
@@ -11,21 +6,28 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyShortcut
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.AwtWindow
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
@@ -49,12 +51,14 @@ import javax.print.*
 import javax.print.attribute.HashPrintRequestAttributeSet
 import javax.print.attribute.standard.MediaSizeName
 import javax.swing.JFileChooser
+import javax.swing.KeyStroke
 import javax.swing.filechooser.FileSystemView
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 lateinit var supabase: SupabaseClient
 var progress = mutableStateOf(false)
+
 @Preview
 @Composable
 fun App(window: ComposeWindow) {
@@ -72,7 +76,7 @@ fun App(window: ComposeWindow) {
     val density = LocalDensity.current
 
     // Get the Documents folder
-    val documentsDir  by remember { mutableStateOf(JFileChooser()) }
+    val documentsDir by remember { mutableStateOf(JFileChooser()) }
 
     var path by remember { mutableStateOf("") }
     var img_path by remember { mutableStateOf(HttpStatusCode(404, "not found")) }
@@ -184,7 +188,8 @@ fun App(window: ComposeWindow) {
                                         progress.value = true
                                         scope.launch {
                                             if (text.text != "") {
-                                                path = mergeZip(files, "${documentsDir.currentDirectory}/${text.text}.zip")
+                                                path =
+                                                    mergeZip(files, "${documentsDir.currentDirectory}/${text.text}.zip")
                                             }
                                         }
                                     }
@@ -194,7 +199,6 @@ fun App(window: ComposeWindow) {
                                         try {
                                             println("path if found:$path")
                                             val f = File(path).readBytes()
-//                                        serverPath = uploadData(f, path)
 
                                             val formatter = SimpleDateFormat("yyyy-MM-dd")
                                             val date = Date()
@@ -209,7 +213,7 @@ fun App(window: ComposeWindow) {
                                                 )
 
                                             upload.stateFlow.onEach {
-                                                if (it.isDone){
+                                                if (it.isDone) {
                                                     progress.value = false
                                                     serverPath = file_path
                                                 }
@@ -272,7 +276,6 @@ fun App(window: ComposeWindow) {
                 }
                 if (slc) {
                     Button(onClick = {
-//                printImage("${documentsDir.path}/aa.png")
                         printQR(File("${documentsDir.currentDirectory}/${text.text}.png"))
                     }) {
                         Text("print")
@@ -336,11 +339,65 @@ fun openFileDialog(
 //}
 
 
-
 fun main() = application {
+
+    var action by remember { mutableStateOf("Last action: None") }
+    var isOpen by remember { mutableStateOf(true) }
     mainData()
-    Window(onCloseRequest = ::exitApplication, title = "F.A.H.R") {
-        App(window)
+    if (isOpen) {
+        var isSubmenuShowing by remember { mutableStateOf(false) }
+
+        Window(onCloseRequest = ::exitApplication, title = "F.A.H.R") {
+            MenuBar {
+                Menu("File", mnemonic = 'F') {
+                    Item("Copy", onClick = { action = "Last action: Copy" }, shortcut = KeyShortcut(Key.C, ctrl = true))
+                    Item(
+                        "Paste",
+                        onClick = { action = "Last action: Paste" },
+                        shortcut = KeyShortcut(Key.V, ctrl = true)
+                    )
+                }
+                Menu("Actions", mnemonic = 'A') {
+                    CheckboxItem(
+                        "Advanced settings",
+                        checked = isSubmenuShowing,
+                        onCheckedChange = {
+                            isSubmenuShowing = !isSubmenuShowing
+                        }
+                    )
+                    if (isSubmenuShowing) {
+                        Menu("Settings") {
+                            Item("Setting 1", onClick = { action = "Last action: Setting 1" })
+                            Item("Setting 2", onClick = { action = "Last action: Setting 2" })
+                        }
+                    }
+                    Separator()
+                    Item("About", icon = rememberVectorPainter(Icons.Default.Menu), onClick = { action = "Last action: About" })
+                    Item("Exit", onClick = { isOpen = false }, shortcut = KeyShortcut(Key.Escape), mnemonic = 'E')
+                }
+            }
+
+            App(window)
+        }
+    }
+}
+
+
+object MyAppIcon : Painter() {
+    override val intrinsicSize = Size(256f, 256f)
+
+    override fun DrawScope.onDraw() {
+        drawOval(Color.Green, Offset(size.width / 4, 0f), Size(size.width / 2f, size.height))
+        drawOval(Color.Blue, Offset(0f, size.height / 4), Size(size.width, size.height / 2f))
+        drawOval(Color.Red, Offset(size.width / 4, size.height / 4), Size(size.width / 2f, size.height / 2f))
+    }
+}
+
+object TrayIcon : Painter() {
+    override val intrinsicSize = Size(256f, 256f)
+
+    override fun DrawScope.onDraw() {
+        drawOval(Color(0xFFFFA500))
     }
 }
 
@@ -385,20 +442,15 @@ fun printQR(file: File) {
 }
 
 
-
 @Composable
 fun LimitedTrigger(modifier: Modifier) {
-
     CircularProgressIndicator(modifier = modifier)
 }
-
 
 
 fun selectPrintService(printServices: Array<PrintService>): PrintService? {
     val selectedPrintService = ServiceUI.printDialog(null, 50, 50, printServices, printServices[0], null, null)
     return selectedPrintService
 }
-
-
 
 
